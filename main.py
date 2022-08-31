@@ -40,7 +40,11 @@ async def download_beatmapset(bid, noBg: bool = 0, noHitsound: bool = 0):
 
     def rebuildBeatmapset(filename):
         hitsounds = ['normal-', 'nightcore-', 'drum-', 'soft-', 'spinnerspin']
-        # check exist already re-builed beatmapset
+
+        # check if exist re-builded beatmapset output folder
+        if not os.path.isdir(f"{glob.ROOT_REBUILD}/{bid}"):
+            os.mkdir(f"{glob.ROOT_REBUILD}/{bid}")
+        # check if exist already re-builed beatmapset
         if not os.path.isfile(f"{glob.ROOT_REBUILD}/{bid}/{filename}.osz"):
             with zipfile.ZipFile(f"{glob.ROOT_REBUILD}/{bid}/{filename}.osz", "w") as rebuild_ref:
                 # backup now cwd
@@ -80,7 +84,13 @@ async def download_beatmapset(bid, noBg: bool = 0, noHitsound: bool = 0):
         if r.status_code == 200:
             rbody = r.json()[0]
             r.close()
-            return f"{bid} {rbody['artist_unicode']} - {rbody['title_unicode']}.osz"
+            if noBg and noHitsound:
+                FILETYPE = "[NoBG & NoHitsound]"
+            elif noBg:
+                FILETYPE = "[NoBG]"
+            elif noHitsound:
+                FILETYPE = "[NoHitsound]"
+            return f"[{FILETYPE}] {bid} {rbody['artist_unicode']} - {rbody['title_unicode']}.osz"
 
 
     # beatmap file exist check
@@ -90,7 +100,7 @@ async def download_beatmapset(bid, noBg: bool = 0, noHitsound: bool = 0):
     if not os.path.isdir(f"{glob.ROOT_UNZIP}/{bid}"):
         unzipfile()
     
-    # check exist re-builded beatmapsets and if not exist re-build beatmapset
+    # check if exist re-builded beatmapsets and if not exist re-build beatmapset
     if noBg and noHitsound:
         rebuildBeatmapset('all')
     elif noBg:
