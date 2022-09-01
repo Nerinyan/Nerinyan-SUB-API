@@ -155,6 +155,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
         if r.status_code == 200:
             rbody = r.json()[0]
             r.close()
+            FILETYPE = ''
             if noBg and noHitsound and noStoryboard:
                 FILETYPE = "[NoBG & NoHitsound & NoStoryboard]"
             elif noBg and noHitsound and not noStoryboard:
