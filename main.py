@@ -197,3 +197,43 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
         rebuildBeatmapset('nostoryboard')
     
     return FileResponse(get_file_root(), media_type="application/x-osu-beatmap-archive", filename=generate_file_name())
+
+
+@app.get("/bg/{bid}")
+async def beatmap_bg(bid):
+    def checkfile():
+        if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
+            with requests.get(f"{NERINYAN_API}/d/{bid}", stream=True) as req:
+                req.raise_for_status()
+                with open (f"{glob.ROOT_UNZIP}/{bid}.osz", 'wb') as f:
+                    for chunk in req.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            unzipfile(istemp=True)
+
+    def unzipfile(istemp: bool = 0):
+        if not istemp:
+            with zipfile.ZipFile(f"{glob.ROOT_BEATMAP}/{bid}.osz", 'r') as beatmap_ref:
+                beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
+        else:
+            with zipfile.ZipFile(f"{glob.ROOT_UNZIP}/{bid}.osz", 'r') as beatmap_ref:
+                beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
+
+    def get_file_root():
+        # backup now cwd
+        owd = os.getcwd()
+        # change cwd to unzipped root
+        os.chdir(f"{glob.ROOT_UNZIP}/{bid}/")
+        for f in os.listdir('./'):
+            if f.endswith('.png') or f.endswith('.jpg'):
+                # return to default cwd
+                os.chdir(owd)
+                return f"{glob.ROOT_UNZIP}/{bid}/{f}"
+
+    # beatmap file exist check
+    checkfile()
+    
+    # If requested beatmapset is not unziped then unzip beatmapset
+    if not os.path.isdir(f"{glob.ROOT_UNZIP}/{bid}"):
+        unzipfile()
+
+    return FileResponse(get_file_root())
