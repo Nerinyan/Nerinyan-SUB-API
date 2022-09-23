@@ -1,4 +1,5 @@
 import os
+import re
 import zipfile
 import requests
 import pathlib
@@ -267,12 +268,10 @@ async def beatmap_bg(bid):
         for f in os.listdir('./'):
             if version in f:
                 with open(f, 'r', encoding='UTF-8') as ff:
-                    img_line = ff.readlines()[42]
-                    img = img_line.replace('0,0,"', '')
-                    img = img.replace('",0,0\n', '')
+                    img_line = re.compile(r'(?<=0,0,").+(?=",0,0)').search(str(ff.readlines())).group()
                 # return to default cwd
                 os.chdir(owd)
-                return f"{glob.ROOT_UNZIP}/{bbid}/{img}"
+                return f"{glob.ROOT_UNZIP}/{bbid}/{img_line}"
 
     # Convert Beatmap ID to Beatmapset id and get version name
     async def convert_beatmapsetid_and_get_version():
