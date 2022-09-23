@@ -27,17 +27,17 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
 
     print(f"=====================\nRequest Beatmapset ID: {bid}\nNo Video: {noVideo}\nNo BG: {noBg}\nNo Hitsound: {noHitsound}\nNo Storyboard: {noStoryboard}\n==================")
     
-    def checkfile():
+    async def checkfile():
         if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
             with requests.get(f"{NERINYAN_API}/d/{bid}", stream=True) as req:
                 req.raise_for_status()
                 with open (f"{glob.ROOT_UNZIP}/{bid}.osz", 'wb') as f:
                     for chunk in req.iter_content(chunk_size=8192):
                         f.write(chunk)
-            unzipfile(istemp=True)
+            await unzipfile(istemp=True)
 
 
-    def unzipfile(istemp: bool = 0):
+    async def unzipfile(istemp: bool = 0):
         if not istemp:
             with zipfile.ZipFile(f"{glob.ROOT_BEATMAP}/{bid}.osz", 'r') as beatmap_ref:
                 beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
@@ -45,7 +45,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
             with zipfile.ZipFile(f"{glob.ROOT_UNZIP}/{bid}.osz", 'r') as beatmap_ref:
                 beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
 
-    def rebuildBeatmapset(filename):
+    async def rebuildBeatmapset(filename):
         hitsounds = ['normal-', 'nightcore-', 'drum-', 'soft-', 'spinnerspin']
 
         # check if exist re-builded beatmapset output folder
@@ -134,7 +134,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                 os.chdir(owd)
 
     # get rebuiled file root
-    def get_file_root():
+    async def get_file_root():
         if noBg and noHitsound and noStoryboard:
             return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}all.osz"
         elif noBg and noHitsound and not noStoryboard:
@@ -150,7 +150,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
         elif noHitsound:
             return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nostoryboard.osz"
 
-    def generate_file_name():
+    async def generate_file_name():
         r = requests.get(f"{NERINYAN_API}/search?q={bid}")
         if r.status_code == 200:
             rbody = r.json()[0]
@@ -174,43 +174,43 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
 
 
     # beatmap file exist check
-    checkfile()
+    await checkfile()
     
     # If requested beatmapset is not unziped then unzip beatmapset
     if not os.path.isdir(f"{glob.ROOT_UNZIP}/{bid}"):
-        unzipfile()
+        await unzipfile()
     
     # check if exist re-builded beatmapsets and if not exist re-build beatmapset
     if noBg and noHitsound and noStoryboard:
-        rebuildBeatmapset('all')
+        await rebuildBeatmapset('all')
     elif noBg and noHitsound:
-        rebuildBeatmapset('nobg&nohitsound')
+        await rebuildBeatmapset('nobg&nohitsound')
     elif noBg and noStoryboard:
-        rebuildBeatmapset('nobg&nostoryboard')
+        await rebuildBeatmapset('nobg&nostoryboard')
     elif noHitsound and noStoryboard:
-        rebuildBeatmapset('nohitsound&nostoryboard')
+        await rebuildBeatmapset('nohitsound&nostoryboard')
     elif noBg:
-        rebuildBeatmapset('nobg')
+        await rebuildBeatmapset('nobg')
     elif noHitsound:
-        rebuildBeatmapset('noHitsound')
+        await rebuildBeatmapset('noHitsound')
     elif noStoryboard:
-        rebuildBeatmapset('nostoryboard')
+        await rebuildBeatmapset('nostoryboard')
     
-    return FileResponse(get_file_root(), media_type="application/x-osu-beatmap-archive", filename=generate_file_name())
+    return FileResponse(await get_file_root(), media_type="application/x-osu-beatmap-archive", filename=await generate_file_name())
 
 
 @app.get("/bg/{bid}")
 async def beatmap_bg(bid):
-    def checkfile():
+    async def checkfile():
         if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
             with requests.get(f"{NERINYAN_API}/d/{bid}", stream=True) as req:
                 req.raise_for_status()
                 with open (f"{glob.ROOT_UNZIP}/{bid}.osz", 'wb') as f:
                     for chunk in req.iter_content(chunk_size=8192):
                         f.write(chunk)
-            unzipfile(istemp=True)
+            await unzipfile(istemp=True)
 
-    def unzipfile(istemp: bool = 0):
+    async def unzipfile(istemp: bool = 0):
         if not istemp:
             with zipfile.ZipFile(f"{glob.ROOT_BEATMAP}/{bid}.osz", 'r') as beatmap_ref:
                 beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
@@ -218,7 +218,7 @@ async def beatmap_bg(bid):
             with zipfile.ZipFile(f"{glob.ROOT_UNZIP}/{bid}.osz", 'r') as beatmap_ref:
                 beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
 
-    def get_file_root():
+    async def get_file_root():
         # backup now cwd
         owd = os.getcwd()
         # change cwd to unzipped root
@@ -230,10 +230,67 @@ async def beatmap_bg(bid):
                 return f"{glob.ROOT_UNZIP}/{bid}/{f}"
 
     # beatmap file exist check
-    checkfile()
+    await checkfile()
     
     # If requested beatmapset is not unziped then unzip beatmapset
     if not os.path.isdir(f"{glob.ROOT_UNZIP}/{bid}"):
-        unzipfile()
+        await unzipfile()
 
-    return FileResponse(get_file_root())
+    return FileResponse(await get_file_root())
+
+
+
+@app.get("/bg/beatmap/{bid}")
+async def beatmap_bg(bid):
+    async def checkfile(bbid: int = 0):
+        if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bbid}.osz"):
+            with requests.get(f"{NERINYAN_API}/d/{bbid}", stream=True) as req:
+                req.raise_for_status()
+                with open (f"{glob.ROOT_UNZIP}/{bbid}.osz", 'wb') as f:
+                    for chunk in req.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            await unzipfile(istemp=True)
+
+    async def unzipfile(bbid: int = 0, istemp: bool = 0):
+        if not istemp:
+            with zipfile.ZipFile(f"{glob.ROOT_BEATMAP}/{bbid}.osz", 'r') as beatmap_ref:
+                beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bbid}")
+        else:
+            with zipfile.ZipFile(f"{glob.ROOT_UNZIP}/{bbid}.osz", 'r') as beatmap_ref:
+                beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bbid}")
+
+    async def get_file_root(bbid: int = 0, version: str = ''):
+        # backup now cwd
+        owd = os.getcwd()
+        # change cwd to unzipped root
+        os.chdir(f"{glob.ROOT_UNZIP}/{bbid}/")
+        for f in os.listdir('./'):
+            if version in f:
+                with open(f, 'r', encoding='UTF-8') as ff:
+                    img_line = ff.readlines()[42]
+                    img = img_line.replace('0,0,"', '')
+                    img = img.replace('",0,0\n', '')
+                # return to default cwd
+                os.chdir(owd)
+                return f"{glob.ROOT_UNZIP}/{bbid}/{img}"
+
+    # Convert Beatmap ID to Beatmapset id and get version name
+    async def convert_beatmapsetid_and_get_version():
+        with requests.get(f"{NERINYAN_API}/search?q={bid}", stream=True) as req:
+            req.raise_for_status()
+            if req.status_code == 200:
+                body = req.json()[0]
+                for bmap in body['beatmaps']:
+                    if int(bmap['id']) == int(bid):
+                        return [body['id'], bmap['version']]
+
+    ver = await convert_beatmapsetid_and_get_version()
+
+    # beatmap file exist check
+    await checkfile(bbid=ver[0])
+    
+    # If requested beatmapset is not unziped then unzip beatmapset
+    if not os.path.isdir(f"{glob.ROOT_UNZIP}/{ver[0]}"):
+        await unzipfile(bbid=ver[0])
+
+    return FileResponse(await get_file_root(bbid=ver[0], version=ver[1]))
