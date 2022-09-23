@@ -171,7 +171,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                 FILETYPE = "[NoHitsound]"
             elif noStoryboard and not noHitsound and not noBg:
                 FILETYPE = "[NoStoryboard]"
-            return f"{FILETYPE} {bid} {rbody['artist_unicode']} - {rbody['title_unicode']}.osz"
+            return f"{FILETYPE} {bid} {rbody['artist']} - {rbody['title']}.osz"
 
 
     # beatmap file exist check
