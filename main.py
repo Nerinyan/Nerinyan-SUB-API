@@ -1,11 +1,13 @@
 import os
 import re
+import json
 import zipfile
 import requests
 import pathlib
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
 
 from common import glob
 from modules import config
@@ -18,6 +20,14 @@ NERINYAN_API = "https://api.nerinyan.moe"
 @app.get("/")
 async def root():
     return {"msg": "oh, hi!! (>///<)"}
+
+@app.get("/notification")
+async def notification():
+    try:
+        with open("./notification.json", "r") as r:
+            return json.load(r)
+    except Exception as e:
+        return {'error': str(e)}
 
 @app.get("/d/{bid}")
 async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound: bool = 0, noStoryboard: bool = 0, nv: bool = 0, nb: bool = 0, nh: bool = 0, nsb: bool = 0):
