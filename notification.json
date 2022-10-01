@@ -2,5 +2,6 @@
     "error": "None",
     "visible": "true",
     "type": "warning",
-    "msg": "test1234"
+    "message": "test1234",
+    "description": "test4321"
 }
