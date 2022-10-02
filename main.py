@@ -213,7 +213,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
 @app.get("/bg/{bid}")
 async def beatmap_bg(bid):
     async def check_request_is_set_or_beatmap():
-        with requests.get(f"{NERINYAN_API}/search?q={bid}", stream=True) as req:
+        with requests.get(f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true", stream=True) as req:
             req.raise_for_status()
             if req.status_code == 200:
                 body = req.json()[0]
