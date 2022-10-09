@@ -217,9 +217,11 @@ async def beatmap_bg(beatmapid):
         bid = int(beatmapid)
 
     async def check_request_is_set_or_beatmap():
-        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true"
+        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true&option="
         if int(beatmapid) < 0:
-            url += "&option=s"
+            url += "s"
+        else:
+            url += "m"
         with requests.get(url, stream=True) as req:
             req.raise_for_status()
             if req.status_code == 200:
