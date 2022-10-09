@@ -6,8 +6,7 @@ import requests
 import pathlib
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, JSONResponse
 
 from common import glob
 from modules import config
@@ -210,12 +209,22 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
     return FileResponse(await get_file_root(), media_type="application/x-osu-beatmap-archive", filename=await generate_file_name())
 
 
-@app.get("/bg/{bid}")
-async def beatmap_bg(bid):
+@app.get("/bg/{beatmapid}")
+async def beatmap_bg(beatmapid):
+    if int(beatmapid) < 0:
+        bid = -int(beatmapid)
+    else:
+        bid = int(beatmapid)
+
     async def check_request_is_set_or_beatmap():
-        with requests.get(f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true", stream=True) as req:
+        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true"
+        if int(beatmapid) < 0:
+            url += "&option=s"
+        with requests.get(url, stream=True) as req:
             req.raise_for_status()
             if req.status_code == 200:
+                if len(req.json()) > 1:
+                    return ['error', 0]
                 body = req.json()[0]
                 if int(bid) == body['id']:
                     return ['sid', body['id']]
@@ -261,6 +270,8 @@ async def beatmap_bg(bid):
 
     # check request is beatmapset or beatmap
     req = await check_request_is_set_or_beatmap()
+    if req[0] == 'error':
+        return JSONResponse(content={"error": "I can't to specify if what you requested is beatmapset id or beatmap id. But if you requested beatmapset id, add '-' before beatmapset id.",}, status_code=404)
 
     # beatmap file exist check
     await checkfile(bbid=req[1])
