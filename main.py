@@ -216,17 +216,17 @@ async def beatmap_bg(beatmapid):
     else:
         bid = int(beatmapid)
 
-    async def check_request_is_set_or_beatmap():
-        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true&option="
-        if int(beatmapid) < 0:
-            url += "s"
-        else:
-            url += "m"
+    async def check_request_is_set_or_beatmap(re: bool = 0):
+        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true"
+        if int(beatmapid) < 0 and not re:
+            url += "&option=s"
+        if re:
+            url += "&option=m"
         with requests.get(url, stream=True) as req:
             req.raise_for_status()
             if req.status_code == 200:
                 if len(req.json()) > 1:
-                    return ['error', 0]
+                    return await check_request_is_set_or_beatmap(re=True)
                 body = req.json()[0]
                 if int(bid) == body['id']:
                     return ['sid', body['id']]
@@ -254,32 +254,46 @@ async def beatmap_bg(beatmapid):
     async def get_file_root(isBeatmap: bool = 0, bbid: int = 0, req: list = []):
         # backup now cwd
         owd = os.getcwd()
-        # change cwd to unzipped root
-        os.chdir(f"{glob.ROOT_UNZIP}/{bbid}/")
-        for f in os.listdir('./'):
-            if not isBeatmap:
-                if f.endswith('.png') or f.endswith('.jpg'):
-                    # return to default cwd
-                    os.chdir(owd)
-                    return f"{glob.ROOT_UNZIP}/{bbid}/{f}"
-            else:
-                if req[2] in f:
-                    with open(f, 'r', encoding='UTF-8') as ff:
-                        img_line = re.compile(r'(?<=0,0,").+(?=",0,0)').search(str(ff.readlines())).group()
-                    # return to default cwd
-                    os.chdir(owd)
-                    return f"{glob.ROOT_UNZIP}/{bbid}/{img_line}"
+        try:
+            # change cwd to unzipped root
+            os.chdir(f"{glob.ROOT_UNZIP}/{bbid}/")
+            for f in os.listdir('./'):
+                if not isBeatmap:
+                    if f.endswith('.png') or f.endswith('.jpg'):
+                        # return to default cwd
+                        os.chdir(owd)
+                        return f"{glob.ROOT_UNZIP}/{bbid}/{f}"
+                else:
+                    if req[2] in f:
+                        with open(f, 'r', encoding='UTF-8') as ff:
+                            img_line = re.compile(r'(?<=0,0,").+(?=",0,0)').search(str(ff.readlines())).group()
+                        # return to default cwd
+                        os.chdir(owd)
+                        return f"{glob.ROOT_UNZIP}/{bbid}/{img_line}"
+        except Exception as e:
+            return "ERROR"
 
-    # check request is beatmapset or beatmap
+    # check request is beatmapset or beatmap3
     req = await check_request_is_set_or_beatmap()
     if req[0] == 'error':
         return JSONResponse(content={"error": "I can't to specify if what you requested is beatmapset id or beatmap id. But if you requested beatmapset id, add '-' before beatmapset id.",}, status_code=404)
+    FuckManiaKey = re.compile(r'(\[[0-9]K\] )').search(str(req[2])).group()
+    if len(FuckManiaKey) > 0:
+        req[2] = req[2].replace(FuckManiaKey, "")
 
-    # beatmap file exist check
-    await checkfile(bbid=req[1])
+    try:
+        # beatmap file exist check
+        await checkfile(bbid=req[1])
 
-    # If requested beatmapset is not unziped then unzip beatmapset
-    if not os.path.isdir(f"{glob.ROOT_UNZIP}/{req[1]}"):
-        await unzipfile(bbid=req[1])
+        # If requested beatmapset is not unziped then unzip beatmapset
+        if not os.path.isdir(f"{glob.ROOT_UNZIP}/{req[1]}"):
+            await unzipfile(bbid=req[1])
+    except:
+        return JSONResponse(content={"error": "An error occurred while trying to find BG."}, status_code=404)
 
-    return FileResponse(await get_file_root(isBeatmap=False if req[0] == 'sid' else True, bbid=req[1], req=req))
+    fileROOT = await get_file_root(isBeatmap=False if req[0] == 'sid' else True, bbid=req[1], req=req)
+
+    if fileROOT is not "ERROR":
+        return FileResponse(fileROOT)
+    else:
+        return JSONResponse(content={"error": "An error occurred while trying to find BG."}, status_code=404)
