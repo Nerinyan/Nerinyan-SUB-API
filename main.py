@@ -277,9 +277,12 @@ async def beatmap_bg(beatmapid):
     req = await check_request_is_set_or_beatmap()
     if req[0] == 'error':
         return JSONResponse(content={"error": "I can't to specify if what you requested is beatmapset id or beatmap id. But if you requested beatmapset id, add '-' before beatmapset id.",}, status_code=404)
-    FuckManiaKey = re.compile(r'(\[[0-9]K\] )').search(str(req[2])).group()
-    if len(FuckManiaKey) > 0:
-        req[2] = req[2].replace(FuckManiaKey, "")
+    try:
+        FuckManiaKey = re.compile(r'(\[[0-9]K\] )').search(str(req[2])).group()
+        if len(FuckManiaKey) > 0:
+            req[2] = req[2].replace(FuckManiaKey, "")
+    except:
+        print("NO MANIA")
 
     try:
         # beatmap file exist check
