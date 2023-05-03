@@ -27,7 +27,7 @@ async def notification():
             return json.load(r)
     except Exception as e:
         return {'error': str(e)}
-
+    
 @app.get("/d/{bid}")
 async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound: bool = 0, noStoryboard: bool = 0, nv: bool = 0, nb: bool = 0, nh: bool = 0, nsb: bool = 0):
     noVideo = noVideo | nv
@@ -35,8 +35,6 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
     noHitsound = noHitsound | nh
     noStoryboard = noStoryboard | nsb
 
-    print(f"=====================\nRequest Beatmapset ID: {bid}\nNo Video: {noVideo}\nNo BG: {noBg}\nNo Hitsound: {noHitsound}\nNo Storyboard: {noStoryboard}\n==================")
-    
     async def checkfile():
         if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
             with requests.get(f"{NERINYAN_API}/d/{bid}", stream=True) as req:
@@ -131,7 +129,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                                 # add file to zip
                                 rebuild_ref.write(os.path.join(f"./", f), compress_type=zipfile.ZIP_DEFLATED)
                     # No Storyboard
-                    elif noStoryboard and not noBg and not noStoryboard:
+                    elif noStoryboard and not noBg and not noHitsound:
                         if noVideo:
                             if not f.endswith('.osb') and not f == "sb" and not f.endswith('.mp4') and not f.endswith('.m4v'):
                                 # add file to zip
@@ -145,20 +143,21 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
 
     # get rebuiled file root
     async def get_file_root():
+        root = f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}"
         if noBg and noHitsound and noStoryboard:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}all.osz"
-        elif noBg and noHitsound and not noStoryboard:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nobg&nohitsound.osz"
-        elif noBg and noStoryboard and not noHitsound:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nobg&nostoryboard.osz"
-        elif noHitsound and noStoryboard and not noBg:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nohitsound&nostoryboard.osz"
-        elif noBg:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nobg.osz"
-        elif noHitsound:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}noHitsound.osz"
-        elif noHitsound:
-            return f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}nostoryboard.osz"
+            return f"{root}all.osz"
+        if noBg and noHitsound and not noStoryboard:
+            return f"{root}nobg&nohitsound.osz"
+        if noBg and noStoryboard and not noHitsound:
+            return f"{root}nobg&nostoryboard.osz"
+        if noHitsound and noStoryboard and not noBg:
+            return f"{root}nohitsound&nostoryboard.osz"
+        if noBg:
+            return f"{root}nobg.osz"
+        if noHitsound:
+            return f"{root}noHitsound.osz"
+        if noStoryboard:
+            return f"{root}nostoryboard.osz"
 
     async def generate_file_name():
         r = requests.get(f"{NERINYAN_API}/search?q={bid}")
@@ -180,7 +179,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                 FILETYPE = "[NoHitsound]"
             elif noStoryboard and not noHitsound and not noBg:
                 FILETYPE = "[NoStoryboard]"
-            return f"{FILETYPE} {bid} {rbody['artist']} - {rbody['title']}.osz"
+            return f"{bid} {rbody['artist']} - {rbody['title']}.osz"
 
 
     # beatmap file exist check
@@ -259,7 +258,7 @@ async def beatmap_bg(beatmapid):
             os.chdir(f"{glob.ROOT_UNZIP}/{bbid}/")
             for f in os.listdir('./'):
                 if not isBeatmap:
-                    if f.endswith('.png') or f.endswith('.jpg'):
+                    if f.endswith('.png') or f.endswith('.jpg') or f.endswith('.jpeg'):
                         # return to default cwd
                         os.chdir(owd)
                         return f"{glob.ROOT_UNZIP}/{bbid}/{f}"
@@ -277,12 +276,13 @@ async def beatmap_bg(beatmapid):
     req = await check_request_is_set_or_beatmap()
     if req[0] == 'error':
         return JSONResponse(content={"error": "I can't to specify if what you requested is beatmapset id or beatmap id. But if you requested beatmapset id, add '-' before beatmapset id.",}, status_code=404)
+
     try:
         FuckManiaKey = re.compile(r'(\[[0-9]K\] )').search(str(req[2])).group()
         if len(FuckManiaKey) > 0:
             req[2] = req[2].replace(FuckManiaKey, "")
     except:
-        print("NO MANIA")
+        pass
 
     try:
         # beatmap file exist check
