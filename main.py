@@ -4,6 +4,8 @@ import json
 import zipfile
 import requests
 import pathlib
+import datetime
+import time
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
@@ -20,6 +22,7 @@ NERINYAN_API = "https://api.nerinyan.moe"
 async def root():
     return {"msg": "oh, hi!! (>///<)"}
 
+
 @app.get("/notification")
 async def notification():
     try:
@@ -28,12 +31,34 @@ async def notification():
     except Exception as e:
         return {'error': str(e)}
     
+
 @app.get("/d/{bid}")
 async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound: bool = 0, noStoryboard: bool = 0, nv: bool = 0, nb: bool = 0, nh: bool = 0, nsb: bool = 0):
     noVideo = noVideo | nv
     noBg = noBg | nb
     noHitsound = noHitsound | nh
     noStoryboard = noStoryboard | nsb
+
+    if noVideo == False and noBg == False and noHitsound == False and noStoryboard == False:
+        return JSONResponse({"error": "parameter not detected"})
+
+    async def checkfile_is_latest():
+        url = f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true&option=s"
+        with requests.get(url, stream=True) as req:
+            req.raise_for_status()
+            if req.status_code == 200:
+                body = req.json()[0]
+                db_time = int(time.mktime(datetime.datetime.strptime(body['last_updated'], "%Y-%m-%d %H:%M:%S").timetuple()))
+                file_time = int(os.path.getmtime(f"{glob.ROOT_BEATMAP}/{bid}.osz"))
+                if db_time - file_time >= 0:
+                    print(f'{bid} - file not latest. so cleanup files')
+                    if os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
+                        os.remove(f"{glob.ROOT_BEATMAP}/{bid}.osz")
+                    if os.path.isfile(f"{glob.ROOT_UNZIP}/{bid}.osz"):
+                        os.remove(f"{glob.ROOT_UNZIP}/{bid}.osz")
+                    os.rmdir(f"{glob.ROOT_UNZIP}/{bid}/")
+                    os.rmdir(f"{glob.ROOT_REBUILD}/{bid}/")
+
 
     async def checkfile():
         if not os.path.isfile(f"{glob.ROOT_BEATMAP}/{bid}.osz"):
@@ -52,6 +77,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
         else:
             with zipfile.ZipFile(f"{glob.ROOT_UNZIP}/{bid}.osz", 'r') as beatmap_ref:
                 beatmap_ref.extractall(f"{glob.ROOT_UNZIP}/{bid}")
+
 
     async def rebuildBeatmapset(filename):
         hitsounds = ['normal-', 'nightcore-', 'drum-', 'soft-', 'spinnerspin']
@@ -141,6 +167,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                 # return to default cwd
                 os.chdir(owd)
 
+
     # get rebuiled file root
     async def get_file_root():
         root = f"{glob.ROOT_REBUILD}/{bid}/{'novideo/' if noVideo else ''}"
@@ -159,8 +186,9 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
         if noStoryboard:
             return f"{root}nostoryboard.osz"
 
+
     async def generate_file_name():
-        r = requests.get(f"{NERINYAN_API}/search?q={bid}")
+        r = requests.get(f"{NERINYAN_API}/search?q={bid}&s=all&nsfw=true&option=s")
         if r.status_code == 200:
             rbody = r.json()[0]
             r.close()
@@ -181,6 +209,7 @@ async def download_beatmapset(bid, noVideo: bool = 0, noBg: bool = 0, noHitsound
                 FILETYPE = "[NoStoryboard]"
             return f"{bid} {rbody['artist']} - {rbody['title']}.osz"
 
+    await checkfile_is_latest()
 
     # beatmap file exist check
     await checkfile()
